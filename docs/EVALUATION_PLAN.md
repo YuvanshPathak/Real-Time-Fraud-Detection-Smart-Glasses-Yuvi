@@ -60,7 +60,7 @@ Module-specific additions:
 
 **Voice label definition:** *real human vs. synthetic voice, regardless of channel.* "Played through a speaker" is **not** an attack by itself — every voice on a video call goes through a speaker.
 
-**Face threat scope (proposed):** deepfakes (synthetic face on a video call) are primary, matching the digital-arrest video-call scenario; presentation attacks (print / screen replay) secondary, tested on T3 only. Presentation-attack datasets (e.g. OULU-NPU) need separate license agreements.
+**Face threat scope (proposed):** deepfakes (synthetic face on a video call) are primary, matching the flagship video-call impersonation scenario ([PROBLEM_STATEMENT.md](PROBLEM_STATEMENT.md)); presentation attacks (print / screen replay) secondary, tested on T3 only. Presentation-attack datasets (e.g. OULU-NPU) need separate license agreements.
 
 ## 5. Fusion, security and system levels
 

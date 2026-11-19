@@ -6,7 +6,9 @@
 
 ## 📖 Overview
 
-This system protects against identity fraud and AI-generated spoofing attacks (deepfakes, voice clones, forged documents) by fusing four independent verification modalities in real time:
+**Problem statement:** attackers increasingly breach critical information infrastructure through people: they impersonate a senior official, officer, vendor or contractor (over a video call, a voice call, or in person with a forged ID) and pressure an employee into a harmful action. These glasses verify the interaction itself, in real time, for the government / critical-infrastructure employee wearing them; the same mechanism protects citizens from "digital arrest" scams. Full statement, scope and scenarios: [docs/PROBLEM_STATEMENT.md](docs/PROBLEM_STATEMENT.md).
+
+The system detects AI-generated and forged credentials (deepfakes, voice clones, forged documents) by fusing four independent verification modalities in real time:
 
 | Modality | Method | Weight |
 |---|---|---|
@@ -25,7 +27,7 @@ The fused **Fraud Risk Score** (0.0 – 1.0) is classified into three levels:
 
 ## 🔒 Design Principle: Always Fresh, Never Stored
 
-Every identity check compares the live capture against **the credential presented in that specific interaction** — e.g. the ID document uploaded in the same `/face-to-id-sync` request — and never against a pre-stored personal reference. There is no database, cache, or persisted biometric template anywhere in this codebase; every uploaded file is deleted immediately after the request that used it. This matters because the product exists to verify *arbitrary strangers* against whatever they present in the moment (a bank teller checking a walk-in customer, an officer checking a traveler) — a pre-enrolled "known faces" list would turn this into a different product (access control), not a fraud detector.
+Every identity check compares the live capture against **the credential presented in that specific interaction** — e.g. the ID document uploaded in the same `/face-to-id-sync` request — and never against a pre-stored personal reference. There is no database, cache, or persisted biometric template anywhere in this codebase; every uploaded file is deleted immediately after the request that used it. This matters because the product exists to verify *arbitrary strangers* against whatever they present in the moment (an employee taking a call from an "official", a gate officer checking a contractor's ID) — a pre-enrolled "known faces" list would turn this into a different product (access control), not a fraud detector.
 
 ---
 

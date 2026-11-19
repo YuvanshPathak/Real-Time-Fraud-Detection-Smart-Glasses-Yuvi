@@ -1,11 +1,13 @@
 | Method | Test set | Bona fide / attack | EER [95% CI] | AUC | Frozen thr. | APCER | BPCER |
 |---|---|---|---|---|---|---|---|
-| Heuristic | asvspoof2019_la_eval | 7355 / 63882 | 46.81% [44.75%, 48.60%] | 0.5240 | 0.4000 | 25.32% | 68.31% |
-| Heuristic, learned weights | asvspoof2019_la_eval | 7355 / 63882 | 33.43% [30.94%, 35.75%] | 0.7262 | 0.1210 | 22.04% | 48.51% |
-| AASIST-L pretrained | asvspoof2019_la_eval | 7355 / 63882 | 0.99% [0.75%, 1.30%] | 0.9992 | -0.9485 | 11.17% | 0.10% |
-| Heuristic | in_the_wild | 19963 / 11816 | 50.50% [39.82%, 54.68%] | 0.5515 | 0.4000 | 19.66% | 81.33% |
-| Heuristic, learned weights | in_the_wild | 19963 / 11816 | 31.96% [27.50%, 38.00%] | 0.7397 | 0.1210 | 28.86% | 35.42% |
-| AASIST-L pretrained | in_the_wild | 19963 / 11816 | 44.45% [35.78%, 53.13%] | 0.5896 | -0.9485 | 36.58% | 50.59% |
+| Heuristic | asvspoof2019_la_eval | 7355 / 63882 | 46.81% [44.95%, 48.61%] | 0.5240 | 0.4000 | 25.32% | 68.31% |
+| Heuristic, learned weights | asvspoof2019_la_eval | 7355 / 63882 | 33.43% [31.03%, 35.42%] | 0.7262 | 0.1210 | 22.04% | 48.51% |
+| AASIST-L pretrained | asvspoof2019_la_eval | 7355 / 63882 | 0.99% [0.74%, 1.31%] | 0.9992 | -0.9485 | 11.17% | 0.10% |
+| AASIST-L fine-tuned (RawBoost+channel) | asvspoof2019_la_eval | 7355 / 63882 | 1.92% [1.50%, 2.36%] | 0.9979 | 0.6238 | 4.75% | 0.52% |
+| Heuristic | in_the_wild | 19963 / 11816 | 50.50% [39.54%, 54.64%] | 0.5515 | 0.4000 | 19.66% | 81.33% |
+| Heuristic, learned weights | in_the_wild | 19963 / 11816 | 31.96% [27.57%, 37.96%] | 0.7397 | 0.1210 | 28.86% | 35.42% |
+| AASIST-L pretrained | in_the_wild | 19963 / 11816 | 44.45% [35.98%, 53.75%] | 0.5896 | -0.9485 | 36.58% | 50.59% |
+| AASIST-L fine-tuned (RawBoost+channel) | in_the_wild | 19963 / 11816 | 43.83% [37.95%, 48.71%] | 0.6159 | 0.6238 | 3.96% | 80.40% |
 
 EER is threshold-free (each set's own). APCER/BPCER use the threshold frozen from that method's dev set (docs/EVALUATION_PLAN.md §3). CIs: bootstrap, resampled by speaker where IDs exist.
 
@@ -63,6 +65,24 @@ EER is threshold-free (each set's own). APCER/BPCER use the threshold frozen fro
 | A18 | 4914 | 3.05% |
 | A19 | 4914 | 0.71% |
 
+**AASIST-L fine-tuned (RawBoost+channel) — asvspoof2019_la_eval, EER by attack_type** (each vs. all bona fide)
+
+| attack_type | n | EER |
+|---|---|---|
+| A07 | 4914 | 0.29% |
+| A08 | 4914 | 0.55% |
+| A09 | 4914 | 0.00% |
+| A10 | 4914 | 1.00% |
+| A11 | 4914 | 0.22% |
+| A12 | 4914 | 0.94% |
+| A13 | 4914 | 0.14% |
+| A14 | 4914 | 0.12% |
+| A15 | 4914 | 0.51% |
+| A16 | 4914 | 1.10% |
+| A17 | 4914 | 5.45% |
+| A18 | 4914 | 4.05% |
+| A19 | 4914 | 1.08% |
+
 **Heuristic — in_the_wild, EER by attack_type** (each vs. all bona fide)
 
 | attack_type | n | EER |
@@ -80,3 +100,9 @@ EER is threshold-free (each set's own). APCER/BPCER use the threshold frozen fro
 | attack_type | n | EER |
 |---|---|---|
 | (none) | 11816 | 44.45% |
+
+**AASIST-L fine-tuned (RawBoost+channel) — in_the_wild, EER by attack_type** (each vs. all bona fide)
+
+| attack_type | n | EER |
+|---|---|---|
+| (none) | 11816 | 43.83% |
