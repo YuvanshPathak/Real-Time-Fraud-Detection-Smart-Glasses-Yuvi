@@ -116,6 +116,12 @@ VoiceCheckResult postVoiceCheck(const int16_t *samples, size_t sampleCount, int 
 }
 
 RiskScoreResult postRiskScore(float voiceLivenessScore) {
+  RiskInputs inputs;
+  inputs.voiceLivenessScore = voiceLivenessScore;
+  return postRiskScore(inputs);
+}
+
+RiskScoreResult postRiskScore(const RiskInputs &inputs) {
   RiskScoreResult result;
   static String riskLevelBuf; // kept alive after return, per api.h contract
 
@@ -125,11 +131,13 @@ RiskScoreResult postRiskScore(float voiceLivenessScore) {
   }
 
   JsonDocument reqDoc;
-  reqDoc["voice_liveness_score"] = voiceLivenessScore;
-  // face_liveness_score / face_id_match_score / doc_authenticity_score are
-  // intentionally omitted, not set to 0 or 1.0 — the backend's fusion logic
-  // excludes unevaluated modalities from the weighted average rather than
-  // assuming a value for them.
+  // Unevaluated modalities (NAN) are intentionally omitted, not set to 0 or
+  // 1.0 — the backend's fusion logic excludes them from the weighted average
+  // rather than assuming a value. face_id_match_score is never sent from the
+  // glasses yet.
+  if (!std::isnan(inputs.voiceLivenessScore)) reqDoc["voice_liveness_score"] = inputs.voiceLivenessScore;
+  if (!std::isnan(inputs.faceLivenessScore)) reqDoc["face_liveness_score"] = inputs.faceLivenessScore;
+  if (!std::isnan(inputs.docAuthenticityScore)) reqDoc["doc_authenticity_score"] = inputs.docAuthenticityScore;
   String reqBody;
   serializeJson(reqDoc, reqBody);
 
@@ -164,6 +172,65 @@ RiskScoreResult postRiskScore(float voiceLivenessScore) {
     }
     http.end();
   }
+
+  return result;
+}
+
+ImageCheckResult postImageCheck(const char *path, const char *fieldName, const char *scoreKey,
+                                const uint8_t *jpg, size_t len) {
+  ImageCheckResult result;
+
+  if (!WiFi.isConnected()) {
+    Serial.printf("[api] %s: WiFi not connected\n", path);
+    return result;
+  }
+
+  const String partHeader = String("--") + BOUNDARY + "\r\n" +
+    "Content-Disposition: form-data; name=\"" + fieldName + "\"; filename=\"capture.jpg\"\r\n" +
+    "Content-Type: image/jpeg\r\n\r\n";
+  const String partFooter = String("\r\n--") + BOUNDARY + "--\r\n";
+
+  const size_t totalLen = partHeader.length() + len + partFooter.length();
+  uint8_t *body = allocBuffer(totalLen);
+  if (!body) {
+    Serial.printf("[api] %s: body allocation failed\n", path);
+    return result;
+  }
+  memcpy(body, partHeader.c_str(), partHeader.length());
+  memcpy(body + partHeader.length(), jpg, len);
+  memcpy(body + partHeader.length() + len, partFooter.c_str(), partFooter.length());
+
+  // Same retry policy as postVoiceCheck (marginal Wi-Fi, see comment there).
+  int httpCode = -1;
+  for (int attempt = 0; attempt < 2 && httpCode != 200; attempt++) {
+    if (attempt > 0) {
+      Serial.printf("[api] %s: retrying...\n", path);
+      delay(500);
+    }
+    HTTPClient http;
+    http.begin(String(BACKEND_URL) + path);
+    http.addHeader("Content-Type", String("multipart/form-data; boundary=") + BOUNDARY);
+    http.setConnectTimeout(15000);
+    http.setTimeout(15000);
+
+    httpCode = http.POST(body, totalLen);
+
+    if (httpCode == 200) {
+      String payload = http.getString();
+      JsonDocument doc;
+      DeserializationError err = deserializeJson(doc, payload);
+      if (!err && !doc[scoreKey].isNull()) {
+        result.ok = true;
+        result.score = doc[scoreKey].as<float>();
+      } else {
+        Serial.printf("[api] %s: response missing %s\n", path, scoreKey);
+      }
+    } else {
+      Serial.printf("[api] %s: HTTP %d\n", path, httpCode);
+    }
+    http.end();
+  }
+  free(body);
 
   return result;
 }

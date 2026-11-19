@@ -1,10 +1,15 @@
-// Real-Time Fraud Detection Smart Glasses — voice module only (this phase).
+// Real-Time Fraud Detection Smart Glasses.
 //
-// Flow: connect Wi-Fi -> init PDM mic -> loop { record 5s -> POST /voice-check
-// -> POST /risk-score with voice_liveness_score only -> LED verdict }.
+// Default build (env seeed_xiao_esp32s3) — voice only:
+//   connect Wi-Fi -> init PDM mic -> loop { record 5s -> POST /voice-check
+//   -> POST /risk-score with voice_liveness_score only -> LED verdict }.
 //
-// Camera, face/document checks, and the phone Gateway relay are out of scope
-// for this rebuild — see CLAUDE.md "Current build status" for what's real.
+// glasses_camera build (-DENABLE_CAMERA) adds, each cycle after the voice
+// check: capture one JPEG -> POST /face-check (video-call scenario), or
+// /document-check while the BOOT button is held (in-person ID scenario) ->
+// that score joins voice in the same /risk-score call.
+//
+// The phone Gateway relay is out of scope — see CLAUDE.md "Current build status".
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -13,6 +18,44 @@
 #include "config.h"
 #include "microphone.h"
 #include "wifi_manager.h"
+
+#ifdef ENABLE_CAMERA
+#include "camera.h"
+
+// XIAO's BOOT button (GPIO 0, active low) is free once booted: hold it while
+// the photo is taken to check a document instead of a face.
+#define MODE_BUTTON_PIN 0
+
+static bool camReady = false;
+
+// Photographs whatever the wearer faces and fills in the matching score.
+static void cameraCheck(RiskInputs &inputs) {
+  if (!camReady) {
+    camReady = initCamera();
+    if (!camReady) return;
+  }
+  const bool docMode = digitalRead(MODE_BUTTON_PIN) == LOW;
+  const uint8_t *jpg = nullptr;
+  size_t len = 0;
+  if (!captureJpeg(&jpg, &len)) return;
+  Serial.printf("[loop] captured %u-byte JPEG (%s mode)\n", (unsigned)len, docMode ? "document" : "face");
+
+  if (docMode) {
+    ImageCheckResult r = postImageCheck("/document-check", "document", "doc_authenticity_score", jpg, len);
+    if (r.ok) {
+      inputs.docAuthenticityScore = r.score;
+      Serial.printf("[loop] doc_authenticity_score=%.2f\n", r.score);
+    }
+  } else {
+    ImageCheckResult r = postImageCheck("/face-check", "image", "face_liveness_score", jpg, len);
+    if (r.ok) {
+      inputs.faceLivenessScore = r.score;
+      Serial.printf("[loop] face_liveness_score=%.2f\n", r.score);
+    }
+  }
+  releaseFrame();  // the frame never outlives this cycle
+}
+#endif
 
 static void blinkLed(int times, int onMs, int offMs) {
   for (int i = 0; i < times; i++) {
@@ -85,6 +128,14 @@ void setup() {
   if (!micReady) {
     Serial.println("[boot] Microphone init failed — voice checks will be skipped");
   }
+
+#ifdef ENABLE_CAMERA
+  pinMode(MODE_BUTTON_PIN, INPUT_PULLUP);
+  camReady = initCamera();
+  if (!camReady) {
+    Serial.println("[boot] Camera init failed — will retry each cycle");
+  }
+#endif
 }
 
 void loop() {
@@ -124,7 +175,13 @@ void loop() {
   Serial.printf("[loop] voice_liveness_score=%.2f spoof_detected=%s\n",
                 voiceRes.voiceLivenessScore, voiceRes.spoofDetected ? "true" : "false");
 
-  RiskScoreResult riskRes = postRiskScore(voiceRes.voiceLivenessScore);
+  RiskInputs inputs;
+  inputs.voiceLivenessScore = voiceRes.voiceLivenessScore;
+#ifdef ENABLE_CAMERA
+  cameraCheck(inputs);
+#endif
+
+  RiskScoreResult riskRes = postRiskScore(inputs);
   if (!riskRes.ok) {
     Serial.println("[loop] /risk-score failed, skipping verdict display");
     delay(LOOP_INTERVAL_MS);
