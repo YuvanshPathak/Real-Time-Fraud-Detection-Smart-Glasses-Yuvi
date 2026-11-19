@@ -59,3 +59,5 @@ archive/*
 # Evaluation score files (numbers only, but several MB each) — regenerate with
 # eval/voice/score_*.py; the summary tables in eval/results/ are committed.
 eval/scores/
+
+ml/data/
